@@ -241,7 +241,11 @@
           style = "bg:yellow fg:crust";
           when = "true";
           require_repo = true;
-          shell = ["sh" "--noprofile" "--norc"];
+          shell = [
+            "sh"
+            "--noprofile"
+            "--norc"
+          ];
         };
       };
 
