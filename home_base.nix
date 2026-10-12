@@ -217,6 +217,32 @@
           style = "italic fg:mauve";
           when = ''[ -n "$IN_NIX_SHELL" ] || [ -n "$IN_NIX_RUN" ]'';
         };
+
+        # Shows the git-auto-fetch (omz plugin) state next to the branch icon:
+        #  -  (sync) when the branch tracks a remote and auto-fetch is enabled
+        #  -  (pause) when the branch tracks a remote but auto-fetch is suspended
+        #     (the plugin's guard file $GIT_DIR/NO_AUTO_FETCH is present)
+        #  - nothing for local-only branches (no upstream to fetch from)
+        git_auto_fetch = {
+          command = ''
+            upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)
+            if [ -z "$upstream" ]; then
+              exit 0
+            fi
+            gitdir=$(git rev-parse --git-dir 2>/dev/null)
+            if [ -f "$gitdir/NO_AUTO_FETCH" ]; then
+              printf ''
+            else
+              printf ''
+            fi
+          '';
+          description = "Shows whether omz's git-auto-fetch is enabled for the current branch";
+          format = "[$output]($style)";
+          style = "bg:yellow fg:crust";
+          when = "true";
+          require_repo = true;
+          shell = ["sh" "--noprofile" "--norc"];
+        };
       };
 
       directory = {
@@ -242,7 +268,7 @@
         style = "bg:sapphire";
         symbol = "☸ ";
       };
-      format = "[](red)$os$username$hostname[](bg:peach fg:red)$directory[](bg:yellow fg:peach)$git_branch$git_status[](fg:yellow bg:green)$c$rust$golang$nodejs$php$java$kotlin$haskell$python[](fg:green bg:sapphire)$conda$kubernetes[](fg:sapphire bg:lavender)$time[ ](fg:lavender)$cmd_duration$line_break\$nix_shell\${custom.nix_shell}$character";
+      format = "[](red)$os$username$hostname[](bg:peach fg:red)$directory[](bg:yellow fg:peach)\${custom.git_auto_fetch}$git_branch$git_status[](fg:yellow bg:green)$c$rust$golang$nodejs$php$java$kotlin$haskell$python[](fg:green bg:sapphire)$conda$kubernetes[](fg:sapphire bg:lavender)$time[ ](fg:lavender)$cmd_duration$line_break\$nix_shell\${custom.nix_shell}$character";
       git_branch = {
         format = "[[ $symbol $branch ](fg:crust bg:yellow)]($style)";
         style = "bg:yellow";
