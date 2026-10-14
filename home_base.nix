@@ -18,6 +18,8 @@
 }:
 
 {
+  imports = [ inputs.lazyvim.homeManagerModules.default ];
+
   home.username = username;
   home.homeDirectory = "/home/${username}";
 
@@ -58,6 +60,48 @@
       ])
     ];
 
+  # LazyVim, wired through Nix: plugins are injected as pinned `dev` specs
+  # pointing at store paths, treesitter parsers are prebuilt, and Mason is
+  # disabled (its prebuilt binaries cannot run outside an FHS environment).
+  # Consequences: `~/.config/nvim` is read-only and `:Lazy update` does
+  # nothing; plugins move when `lazyvim` is updated in flake.lock.
+  programs.lazyvim = {
+    enable = true;
+
+    # LSP servers, formatters and linters that LazyVim would otherwise expect
+    # Mason to provide. They land on neovim's wrapper PATH, not in the profile.
+    extraPackages = with pkgs; [
+      nil
+      yaml-language-server
+      jdt-language-server
+      lua-language-server
+      stylua
+    ];
+
+    extras.lang = {
+      nix.enable = true;
+      json = {
+        enable = true;
+        installDependencies = true;
+      };
+      yaml.enable = true;
+      terraform = {
+        enable = true;
+        installDependencies = true;
+      };
+      markdown = {
+        enable = true;
+        installDependencies = true;
+        installRuntimeDependencies = true;
+      };
+    };
+  };
+
+  programs.neovim = {
+    viAlias = true;
+    vimAlias = true;
+  };
+
   programs.zellij = {
     enable = true;
     enableZshIntegration = true;
@@ -65,6 +109,7 @@
 
       default_mode = "locked";
       theme = "catppuccin-mocha";
+      show_startup_tips = false;
     };
     attachExistingSession = true;
   };
@@ -94,6 +139,7 @@
 
       core.autocrlf = "input";
       push.autoSetupRemote = true;
+      pull.rebase = true;
     };
   };
 
@@ -249,6 +295,23 @@
         };
       };
 
+      # Rendered on the second line next to the nix-shell indicator, since
+      # both describe the environment loaded into the current directory.
+      # Shown whenever an `.envrc` is in scope: a check mark once the
+      # environment is loaded, an empty circle while it is not, plus a lock
+      # or ban glyph when the `.envrc` still needs `direnv allow`.
+      direnv = {
+        disabled = false;
+        format = "[$symbol$loaded$allowed ]($style)";
+        symbol = " ";
+        style = "italic fg:teal";
+        loaded_msg = "";
+        unloaded_msg = "";
+        allowed_msg = "";
+        not_allowed_msg = " ";
+        denied_msg = " ";
+      };
+
       directory = {
         format = "[ $path ]($style)";
         style = "bg:peach fg:crust";
@@ -272,7 +335,7 @@
         style = "bg:sapphire";
         symbol = "☸ ";
       };
-      format = "[](red)$os$username$hostname[](bg:peach fg:red)$directory[](bg:yellow fg:peach)\${custom.git_auto_fetch}$git_branch$git_status[](fg:yellow bg:green)$c$rust$golang$nodejs$php$java$kotlin$haskell$python[](fg:green bg:sapphire)$conda$kubernetes[](fg:sapphire bg:lavender)$time[ ](fg:lavender)$cmd_duration$line_break\$nix_shell\${custom.nix_shell}$character";
+      format = "[](red)$os$username$hostname[](bg:peach fg:red)$directory[](bg:yellow fg:peach)\${custom.git_auto_fetch}$git_branch$git_status[](fg:yellow bg:green)$c$rust$golang$nodejs$php$java$kotlin$haskell$python[](fg:green bg:sapphire)$conda$kubernetes[](fg:sapphire bg:lavender)$time[ ](fg:lavender)$cmd_duration$line_break$direnv\$nix_shell\${custom.nix_shell}$character";
       git_branch = {
         format = "[[ $symbol $branch ](fg:crust bg:yellow)]($style)";
         style = "bg:yellow";
@@ -484,12 +547,24 @@
     };
   };
 
+  # Per-directory environments. `nix-direnv` replaces direnv's own `use nix`
+  # with a caching implementation that keeps the built shell alive as a GC
+  # root, so re-entering a project directory does not re-evaluate the flake.
+  programs.direnv = {
+    enable = true;
+    enableZshIntegration = true;
+    nix-direnv.enable = true;
+    # direnv prints its export list on every directory change; the prompt
+    # already reports the state, so the chatter is suppressed.
+    silent = true;
+  };
+
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
   };
 
   home.sessionVariables = {
-    EDITOR = "vim";
+    EDITOR = "nvim";
   };
 }

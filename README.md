@@ -12,10 +12,12 @@ This project bootstraps and manages a fully-configured developer environment on 
 - **Home Manager Integration**: Declaratively manages user profiles, dotfiles, and user packages.
 - **Modern Shell & Terminal**:
   - **Zsh** with Oh-My-Zsh plugins (`git`, `ssh`, `kubectl`, `azure`, `terraform`, `kubectx`, `helm`, `ansible`).
-  - **Starship Prompt**: Custom Catppuccin Mocha powerline theme with JetBrains Mono Nerd Font glyphs. Inside a `nix-shell` / `nix develop` / `nix run`, the loaded packages are shown (via `any-nix-shell`) right before the prompt character.
+  - **Starship Prompt**: Custom Catppuccin Mocha powerline theme with JetBrains Mono Nerd Font glyphs. Inside a `nix-shell` / `nix develop` / `nix run`, the loaded packages are shown (via `any-nix-shell`) right before the prompt character, next to a `direnv` indicator reporting whether the directory's `.envrc` is allowed and loaded.
   - **Zellij**: Modern terminal multiplexer pre-configured with Zsh integration.
+  - **direnv + nix-direnv**: Per-directory environments loaded on `cd`, with the built shell cached and kept alive as a GC root so re-entering a project is instant.
   - **Modern CLI Replacements**: `eza` (for `ls`), `bat` (for `cat`), `ripgrep` (`rg`), `fd`, `fzf`, `jq`, `up`, `lazyssh`.
 - **Development & IDE**:
+  - **LazyVim**: Neovim configured through the [`pfassina/lazyvim-nix`](https://github.com/pfassina/lazyvim-nix) Home Manager module, with the `lang.{nix,python,java,json,yaml,terraform,markdown}` extras enabled. `nvim` is the default `$EDITOR`, aliased to `vi`/`vim`.
   - **IntelliJ IDEA**: Declaratively provisioned with custom plugins via `nix-jetbrains-plugins` (File Watcher, Junie, MCP Server, ML LLM, ACP).
   - **GitHub Copilot CLI** & development toolchains.
   - **Nix Tooling**: `nixfmt` code formatter and `nh` helper.
@@ -29,7 +31,7 @@ This project bootstraps and manages a fully-configured developer environment on 
 | File | Purpose |
 | :--- | :--- |
 | `flake.nix` | Flake entry point defining inputs, NixOS system configuration, WSL settings, and Home Manager modules. |
-| `home_base.nix` | Reusable Home Manager module configuring user packages, shell (Zsh + Starship), Git, Zellij, and IDE setup. |
+| `home_base.nix` | Reusable Home Manager module configuring user packages, shell (Zsh + Starship), direnv, Git, Zellij, LazyVim, and IDE setup. |
 | `system-config.nix` | System-level NixOS state version settings. |
 | `system-customisation.nix` | System customizations: time zone, unfree package whitelisting, Nerd Fonts, Nix experimental features (`flakes`, `nix-command`), and default shell. |
 | `wsl-base-config.nix` | Base WSL configurations (WSL enablement, Windows driver interop, path isolation). |
@@ -155,7 +157,52 @@ sudo nixos-rebuild switch --flake .#nixos
 | `zellij` | `zellij` | Terminal workspace / multiplexer |
 | `fzf` | `fzf` | Interactive fuzzy finder |
 | `nh` | `nh` | Nix CLI companion / helper |
+| `nvim` | LazyVim | Neovim with LazyVim, also reachable as `vi` / `vim` |
+| `direnv allow` | `direnv` | Trust the current directory's `.envrc` so it loads on `cd` |
 | `idea` | JetBrains IDEA | Pre-configured with custom JetBrains plugins |
+
+---
+
+## 🧭 Working with direnv
+
+`direnv` is enabled with the `nix-direnv` integration. In any project directory:
+
+```bash
+echo "use flake" > .envrc   # or: echo "use nix" > .envrc
+direnv allow
+```
+
+Entering the directory then loads the project's dev shell automatically, and the Starship prompt shows a leaf glyph with the current state (loaded / not loaded, plus a lock when the `.envrc` is not allowed yet). `nix-direnv` caches the evaluated shell and registers it as a GC root, so subsequent entries are instant and the closure survives `nix-collect-garbage`.
+
+---
+
+## ✏️ Working with LazyVim
+
+Neovim is provided by the [`pfassina/lazyvim-nix`](https://github.com/pfassina/lazyvim-nix) Home Manager module (`programs.lazyvim` in `home_base.nix`). Everything LazyVim would normally fetch at runtime is resolved by Nix instead:
+
+- Plugins are injected into `lazy.nvim` as pinned local (`dev`) specs pointing at `/nix/store` paths, so `lazy-lock.json` is never written.
+- Treesitter parsers are prebuilt and linked into Neovim's data directory.
+- `mason.nvim` is disabled, because the prebuilt binaries it downloads cannot run outside an FHS environment. LSP servers, formatters and linters come from `programs.lazyvim.extraPackages` and the enabled extras instead.
+
+Consequences:
+
+- `~/.config/nvim` is read-only. Customise Neovim through `programs.lazyvim.config.{options,keymaps,autocmds}` and `programs.lazyvim.plugins` in `home_base.nix`, then rebuild.
+- `:Lazy update` does nothing. Plugins move forward when the `lazyvim` flake input is updated:
+
+  ```bash
+  cd /etc/nixos
+  sudo nix flake update lazyvim
+  sudo nixos-rebuild switch --flake .#nixos
+  ```
+
+To add a language, enable the matching LazyVim extra, e.g.:
+
+```nix
+programs.lazyvim.extras.lang.go = {
+  enable = true;
+  installDependencies = true;   # pull the extra's tools from nixpkgs
+};
+```
 
 ---
 

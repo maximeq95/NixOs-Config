@@ -11,6 +11,8 @@
         "intellij-idea-with-plugins"
         "idea-with-plugins"
         "github-copilot-cli"
+        # Pulled in by the LazyVim `lang.terraform` extra.
+        "terraform"
       ];
 
     time.timeZone = "Europe/Paris";

@@ -17,6 +17,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Home Manager module exposing `programs.lazyvim`. It patches the upstream
+    # LazyVim starter config so every plugin, treesitter parser and LSP binary
+    # is resolved through Nix instead of being downloaded at runtime.
+    lazyvim = {
+      url = "github:pfassina/lazyvim-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     user-provided-config = {
       url = "path:///etc/nixos-config";
       flake = false;
@@ -31,6 +39,7 @@
       nixos-wsl,
       home-manager,
       nix-jetbrains-plugins,
+      lazyvim,
       user-provided-config,
       ...
     }@inputs:
