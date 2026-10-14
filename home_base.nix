@@ -305,10 +305,10 @@
         format = "[$symbol$loaded$allowed ]($style)";
         symbol = " ";
         style = "italic fg:teal";
-        loaded_msg = "";
-        unloaded_msg = "";
+        loaded_msg = "";
+        unloaded_msg = "";
         allowed_msg = "";
-        not_allowed_msg = " ";
+        not_allowed_msg = "󰷌";
         denied_msg = " ";
       };
 
