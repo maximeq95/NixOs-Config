@@ -189,6 +189,7 @@
       plugins = [
         "git"
         "ssh"
+        "direnv"
         "kubectl"
         "azure"
         "terraform"
@@ -251,19 +252,6 @@
       };
 
       custom = {
-        # Shows the packages brought in by the surrounding `nix-shell` / `nix
-        # develop` / `nix run` environment, right before the prompt character.
-        # `nix-shell-info` comes from any-nix-shell and prints nothing outside
-        # such an environment; it hardcodes a bold-green ANSI escape, so the
-        # codes are stripped towq let the palette below drive the color.
-        nix_shell = {
-          command = ''nix-shell-info | sed -E "s/\x1B\[[0-9;]*[mK]//g"'';
-          description = "Packages loaded in the current nix-shell";
-          format = "[{ $output }]($style)";
-          style = "italic fg:mauve";
-          when = ''[ -n "$IN_NIX_SHELL" ] || [ -n "$IN_NIX_RUN" ]'';
-        };
-
         # Shows the git-auto-fetch (omz plugin) state next to the branch icon:
         #  -  (sync) when the branch tracks a remote and auto-fetch is enabled
         #  -  (pause) when the branch tracks a remote but auto-fetch is suspended
@@ -335,7 +323,7 @@
         style = "bg:sapphire";
         symbol = "☸ ";
       };
-      format = "[](red)$os$username$hostname[](bg:peach fg:red)$directory[](bg:yellow fg:peach)\${custom.git_auto_fetch}$git_branch$git_status[](fg:yellow bg:green)$c$rust$golang$nodejs$php$java$kotlin$haskell$python[](fg:green bg:sapphire)$conda$kubernetes[](fg:sapphire bg:lavender)$time[ ](fg:lavender)$cmd_duration$line_break$direnv\$nix_shell\${custom.nix_shell}$character";
+      format = "[](red)$os$username$hostname[](bg:peach fg:red)$directory[](bg:yellow fg:peach)\${custom.git_auto_fetch}$git_branch$git_status[](fg:yellow bg:green)$c$rust$golang$nodejs$php$java$kotlin$haskell$python[](fg:green bg:sapphire)$conda$kubernetes[](fg:sapphire bg:lavender)$time[ ](fg:lavender)$cmd_duration$line_break$direnv\$nix_shell\$character";
       git_branch = {
         format = "[[ $symbol $branch ](fg:crust bg:yellow)]($style)";
         style = "bg:yellow";
@@ -370,6 +358,7 @@
       };
       nix_shell = {
         disabled = false;
+        format = "[$symbol$state( \($name\))]($style) ";
       };
       nodejs = {
         format = "[[ $symbol( $version) ](fg:crust bg:green)]($style)";
