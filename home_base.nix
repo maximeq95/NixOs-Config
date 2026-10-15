@@ -105,9 +105,9 @@
   programs.zellij = {
     enable = true;
     enableZshIntegration = true;
+    plugins = with pkgs.zellijPlugins; [ autolock ];
     settings = {
 
-      default_mode = "locked";
       theme = "catppuccin-mocha";
       show_startup_tips = false;
     };
