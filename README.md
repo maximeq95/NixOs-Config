@@ -12,12 +12,13 @@ This project bootstraps and manages a fully-configured developer environment on 
 - **Home Manager Integration**: Declaratively manages user profiles, dotfiles, and user packages.
 - **Modern Shell & Terminal**:
   - **Zsh** with Oh-My-Zsh plugins (`git`, `ssh`, `kubectl`, `azure`, `terraform`, `kubectx`, `helm`, `ansible`).
-  - **Starship Prompt**: Custom Catppuccin Mocha powerline theme with JetBrains Mono Nerd Font glyphs. Inside a `nix-shell` / `nix develop` / `nix run`, the loaded packages are shown (via `any-nix-shell`) right before the prompt character, next to a `direnv` indicator reporting whether the directory's `.envrc` is allowed and loaded.
+  - **Starship Prompt**: Custom Catppuccin powerline theme (palette from [catppuccin/nix](https://github.com/catppuccin/nix), like the rest of the home) with JetBrains Mono Nerd Font glyphs. Inside a `nix-shell` / `nix develop` / `nix run`, the loaded packages are shown (via `any-nix-shell`) right before the prompt character, next to a `direnv` indicator reporting whether the directory's `.envrc` is allowed and loaded.
   - **Zellij**: Modern terminal multiplexer pre-configured with Zsh integration.
   - **direnv + nix-direnv**: Per-directory environments loaded on `cd`, with the built shell cached and kept alive as a GC root so re-entering a project is instant.
   - **Modern CLI Replacements**: `eza` (for `ls`), `bat` (for `cat`), `ripgrep` (`rg`), `fd`, `fzf`, `jq`, `up`, `lazyssh`.
 - **Development & IDE**:
   - **LazyVim**: Neovim configured through the [`pfassina/lazyvim-nix`](https://github.com/pfassina/lazyvim-nix) Home Manager module, with the `lang.{nix,python,java,json,yaml,terraform,markdown}` extras enabled. `nvim` is the default `$EDITOR`, aliased to `vi`/`vim`.
+  - **revim**: the default editor (Neovim via nixvim, also `vi` / `vim`) and a yazi + zellij IDE around it, packaged in this flake (see [Working with revim](#-working-with-revim)). `home/revim.nix` turns LazyVim off, since both ship an `nvim`.
   - **IntelliJ IDEA**: Declaratively provisioned with custom plugins via `nix-jetbrains-plugins` (File Watcher, Junie, MCP Server, ML LLM, ACP).
   - **GitHub Copilot CLI** & development toolchains.
   - **Nix Tooling**: `nixfmt` code formatter and `nh` helper.
@@ -30,12 +31,26 @@ This project bootstraps and manages a fully-configured developer environment on 
 
 | File | Purpose |
 | :--- | :--- |
-| `flake.nix` | Flake entry point defining inputs, NixOS system configuration, WSL settings, and Home Manager modules. |
-| `home_base.nix` | Reusable Home Manager module configuring user packages, shell (Zsh + Starship), direnv, Git, Zellij, LazyVim, and IDE setup. |
-| `system-config.nix` | System-level NixOS state version settings. |
-| `system-customisation.nix` | System customizations: time zone, unfree package whitelisting, Nerd Fonts, Nix experimental features (`flakes`, `nix-command`), and default shell. |
-| `wsl-base-config.nix` | Base WSL configurations (WSL enablement, Windows driver interop, path isolation). |
+| `flake.nix` | Flake entry point: inputs, `overlays.default`, `homeModules.revim`, per-system `packages` / `formatter` / `checks` (via `flake-utils`), and `nixosConfigurations.nixos`, which wires the inputs and `/etc/nixos-config` into the modules below. |
+| `hosts/nixos/default.nix` | The `nixos` host: platform, state version, the main user's shell, Home Manager settings. |
+| `hosts/nixos/customisation.nix` | System customizations: time zone, unfree package whitelisting, Nerd Fonts, Nix settings (experimental features, trusted users, GC), and zsh. |
+| `hosts/nixos/wsl.nix` | Base WSL configurations (WSL enablement, Windows driver interop, path isolation). |
+| `home/default.nix` | Reusable Home Manager module configuring user packages, shell (Zsh + Starship), direnv, Git, Zellij, LazyVim, the theme, and IDE setup. |
+| `home/revim.nix` | revim as the editor, in place of LazyVim. |
+| `pkgs/revim/` | The `revim` package (`package.nix`, a `callPackage` function), its nixvim configuration (`nvim.nix`), the `revim` command (`revim.sh`) and its zellij layout. |
+| `modules/home-manager/revim/` | The `programs.revim` Home Manager module (`homeModules.revim`). |
 | `exemple_profile.nix` | Example profile template for defining user identity (`username`, `gitUserName`, `gitUserEmail`). |
+
+### Flake outputs
+
+| Output | What |
+| :--- | :--- |
+| `overlays.default` | Adds `revim` and `buildIdeWithPlugins` (from `nix-jetbrains-plugins`) to nixpkgs. The host uses it too. |
+| `packages.<system>.revim` (and `default`) | revim, built with the overlay. |
+| `homeModules.revim` | The `programs.revim` module. |
+| `formatter.<system>` | `nixfmt-tree`, for `nix fmt`. |
+| `checks.<system>.revim` | The revim module, built for a throwaway user. |
+| `nixosConfigurations.nixos` | This machine. |
 
 ---
 
@@ -159,6 +174,7 @@ sudo nixos-rebuild switch --flake .#nixos
 | `nh` | `nh` | Nix CLI companion / helper |
 | `nvim` | LazyVim | Neovim with LazyVim, also reachable as `vi` / `vim` |
 | `direnv allow` | `direnv` | Trust the current directory's `.envrc` so it loads on `cd` |
+| `revim` | revim | Neovim IDE: `revim [dir]`, `revim git`, `revim grep` |
 | `idea` | JetBrains IDEA | Pre-configured with custom JetBrains plugins |
 
 ---
@@ -178,7 +194,7 @@ Entering the directory then loads the project's dev shell automatically, and the
 
 ## ✏️ Working with LazyVim
 
-Neovim is provided by the [`pfassina/lazyvim-nix`](https://github.com/pfassina/lazyvim-nix) Home Manager module (`programs.lazyvim` in `home_base.nix`). Everything LazyVim would normally fetch at runtime is resolved by Nix instead:
+Neovim is provided by the [`pfassina/lazyvim-nix`](https://github.com/pfassina/lazyvim-nix) Home Manager module (`programs.lazyvim` in `home/default.nix`; off while `home/revim.nix` is imported). Everything LazyVim would normally fetch at runtime is resolved by Nix instead:
 
 - Plugins are injected into `lazy.nvim` as pinned local (`dev`) specs pointing at `/nix/store` paths, so `lazy-lock.json` is never written.
 - Treesitter parsers are prebuilt and linked into Neovim's data directory.
@@ -186,7 +202,7 @@ Neovim is provided by the [`pfassina/lazyvim-nix`](https://github.com/pfassina/l
 
 Consequences:
 
-- `~/.config/nvim` is read-only. Customise Neovim through `programs.lazyvim.config.{options,keymaps,autocmds}` and `programs.lazyvim.plugins` in `home_base.nix`, then rebuild.
+- `~/.config/nvim` is read-only. Customise Neovim through `programs.lazyvim.config.{options,keymaps,autocmds}` and `programs.lazyvim.plugins` in `home/default.nix`, then rebuild.
 - `:Lazy update` does nothing. Plugins move forward when the `lazyvim` flake input is updated:
 
   ```bash
@@ -202,6 +218,68 @@ programs.lazyvim.extras.lang.go = {
   enable = true;
   installDependencies = true;   # pull the extra's tools from nixpkgs
 };
+```
+
+---
+
+## 🧩 Working with revim
+
+revim is Neovim configured with nixvim (every plugin, language server and formatter from nixpkgs: no plugin manager, no Mason), and an IDE around it: **yazi** as the file pane and Neovim side by side in a **zellij** tab, plus **lazygit** and Claude Code.
+
+```
+┌ files ┐┌──────── editor (nvim) ────────┐
+│ yazi  ││ [file1] │ [file2] │ [file3] … │  ← barbar tabs
+│       ││                               │
+├───────┴┴────────── terminal ───────────┤
+└────────────────────────────────────────┘
+```
+
+Each IDE tab runs its own Neovim server: picking a file in yazi or in a picker opens it as a tab of the Neovim next to it.
+
+| Command | What it does |
+| :--- | :--- |
+| `revim [dir]` | The IDE on a directory: a new tab inside zellij, else a `revim-<dir>` session. |
+| `revim file…` | Edit, as `nvim file…`. |
+| `revim git [dir]` | lazygit in a tab of its own. |
+| `revim grep [query]` | Live ripgrep search; Enter opens the match in the tab's Neovim. |
+| `revim find` | Fuzzy file picker; Enter opens the file in the tab's Neovim. |
+
+In the IDE: Enter or a click in yazi opens a file, `s` / `S` find a file / search contents, `Alt-t` adds a shell to the terminal stack, `Alt-q` closes the tab. `Ctrl` + arrows move to the pane in that direction, from any pane (`Ctrl-h/j/k/l` also do in Neovim, crossing its own windows first). In Neovim, `Tab` / `Shift-Tab` go to the next / previous file, and `:q` (`:wq`, `:x`) closes the file rather than the editor, asking first whether to save unsaved changes; `:qa` quits. Neovim has VSCode-style keys (`Ctrl-s`, `Ctrl-p`, `F12`, `Ctrl-/`…) and a which-key menu on `<space>`.
+
+### The package
+
+`pkgs/revim/package.nix` is a regular `callPackage` function, added to nixpkgs by `overlays.default` with nixvim's `lib.evalNixvim`. It is built against the host's nixpkgs, which must allow the unfree `barbar.nvim` and `claude-code`, and tuned with `.override`:
+
+```nix
+pkgs.revim.override {
+  flavor = "latte"; # Catppuccin flavor
+  clipboard = "wl-copy"; # "osc52" (default), "pbcopy", "wl-copy" or null
+  extraConfig.opts.relativenumber = true; # any nixvim module
+}
+```
+
+It provides `nvim` (also as `vi` and `vim`) and `revim`.
+
+### The Home Manager module
+
+`homeModules.revim` installs `pkgs.revim`, overridden from its options, and configures what the IDE runs in: yazi (opening files in the tab's Neovim), zellij (mouse, clipboard, keys) and lazygit. `home/revim.nix` sets it up for this machine.
+
+The theme is the host's. When it sets a Catppuccin one with catppuccin/nix (`catppuccin.enable`), Neovim takes its `catppuccin.flavor`, and yazi and lazygit its ports (flavor and accent); without one, Neovim stays Catppuccin Mocha. The module does not depend on catppuccin/nix.
+
+| Option | Default | |
+| :--- | :--- | :--- |
+| `programs.revim.enable` | `false` | |
+| `programs.revim.package` | `pkgs.revim` | From the overlay. |
+| `programs.revim.defaultEditor` | `false` | `EDITOR` and `VISUAL` set to `nvim`. |
+| `programs.revim.clipboard` | `"osc52"` | Neovim's `g:clipboard` and zellij's `copy_command`. |
+| `programs.revim.extraConfig` | `{ }` | Extra nixvim configuration. |
+
+### Hacking on it
+
+```bash
+nix run .#revim -- file.txt   # try the editor without rebuilding the system
+nix fmt                       # nixfmt over the tree
+nix flake check               # evaluates the host, builds the revim module for a throwaway user
 ```
 
 ---
