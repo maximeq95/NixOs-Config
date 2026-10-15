@@ -25,8 +25,14 @@
     nix.settings.experimental-features = [
       "nix-command"
       "flakes"
+      "configurable-impure-env"
     ];
 
+    nix.settings."impure-env" = [ "NIX_CURL_FLAGS" ];
+    nix.settings.trusted-users = [
+      "root"
+      "@wheel"
+    ];
     # Keep /nix/store from growing unbounded: weekly GC of old generations
     # plus store optimisation (hardlinking identical files) on a schedule,
     # which matters most on WSL's size-capped virtual disk.
