@@ -1,5 +1,5 @@
 {
-  description = "NixOS on WSL with Home Manager, and revim: Neovim and an IDE around it";
+  description = "NixOS on WSL with Home Manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -36,11 +36,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # revim's Neovim (pkgs/revim) is a nixvim configuration.
-    nixvim = {
-      url = "github:nix-community/nixvim";
+    # revim: Neovim (nixvim) and a yazi + zellij IDE around it. Its overlay adds
+    # `pkgs.revim`, its Home Manager module `programs.revim` (home/revim.nix).
+    revim = {
+      url = "github:maximeq95/revim";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.systems.follows = "flake-utils/systems";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.home-manager.follows = "home-manager";
     };
 
     user-provided-config = {
@@ -59,17 +61,14 @@
       nix-jetbrains-plugins,
       lazyvim,
       catppuccin,
-      nixvim,
+      revim,
       user-provided-config,
     }:
     {
       overlays.default = final: prev: {
-        revim = final.callPackage ./pkgs/revim/package.nix { inherit (nixvim.lib) evalNixvim; };
         # `pkgs.buildIdeWithPlugins "idea" [ "<plugin id>" … ]`: a JetBrains IDE with its plugins.
         buildIdeWithPlugins = nix-jetbrains-plugins.lib.buildIdeWithPlugins final;
       };
-
-      homeModules.revim = ./modules/home-manager/revim;
 
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
         modules = [
@@ -83,13 +82,16 @@
               additionalTrusts = "${user-provided-config}/additional-trusts.crt";
             in
             {
-              nixpkgs.overlays = [ self.overlays.default ];
+              nixpkgs.overlays = [
+                self.overlays.default
+                revim.overlays.default
+              ];
               security.pki.certificateFiles = nixpkgs.lib.optional (builtins.pathExists additionalTrusts) additionalTrusts;
               wsl.defaultUser = mainUser.username;
               home-manager.sharedModules = [
                 catppuccin.homeModules.catppuccin
                 lazyvim.homeManagerModules.default
-                self.homeModules.revim
+                revim.homeModules.default
               ];
               home-manager.users.${mainUser.username} = {
                 imports = [ ./home ];
@@ -103,47 +105,7 @@
         ];
       };
     }
-    // flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ self.overlays.default ];
-          config.allowUnfreePredicate =
-            pkg:
-            builtins.elem (nixpkgs.lib.getName pkg) [
-              "barbar.nvim"
-              "claude-code"
-            ];
-        };
-      in
-      {
-        packages = {
-          inherit (pkgs) revim;
-          default = pkgs.revim;
-        };
-
-        formatter = pkgs.nixfmt-tree;
-
-        # The revim Home Manager module, for a throwaway user.
-        checks.revim =
-          (home-manager.lib.homeManagerConfiguration {
-            inherit pkgs;
-            modules = [
-              self.homeModules.revim
-              {
-                home = {
-                  username = "revim";
-                  homeDirectory = "/home/revim";
-                  stateVersion = "26.05";
-                };
-                programs.revim = {
-                  enable = true;
-                  defaultEditor = true;
-                };
-              }
-            ];
-          }).activationPackage;
-      }
-    );
+    // flake-utils.lib.eachDefaultSystem (system: {
+      formatter = nixpkgs.legacyPackages.${system}.nixfmt-tree;
+    });
 }

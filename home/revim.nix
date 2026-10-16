@@ -1,6 +1,6 @@
-# revim (pkgs/revim, modules/home-manager/revim) as the editor and IDE, in place
-# of LazyVim: both ship `nvim`, `vi` and `vim`. It follows the home's theme
-# (./default.nix). Drop its import in ./default.nix to get LazyVim back.
+# revim (github:maximeq95/revim, an input of flake.nix) as the editor and IDE,
+# in place of LazyVim: both ship `nvim`, `vi` and `vim`. It follows the home's
+# theme (./default.nix). Drop its import in ./default.nix to get LazyVim back.
 { lib, ... }:
 {
   programs.lazyvim.enable = lib.mkForce false;
