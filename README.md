@@ -4,6 +4,8 @@ A reproducible, declarative NixOS configuration for WSL (Windows Subsystem for L
 
 This project bootstraps and manages a fully-configured developer environment on Windows WSL, complete with modern CLI utilities, shell optimizations, cloud/DevOps tooling, and declarative IDE configurations.
 
+All the configuration logic lives in the [`NixOs-opinionated`](https://github.com/pchesneau/NixOs-opinionated) modules (input `opinionated`); this repository only enables them and declares the main user with the `base`, `ops`, `dev` and `llm` roles. See that repository's README for every available option and role.
+
 ---
 
 ## 🌟 What This Project Does
@@ -11,7 +13,7 @@ This project bootstraps and manages a fully-configured developer environment on 
 - **Declarative NixOS on WSL**: Leverages [`NixOS-WSL`](https://github.com/nix-community/NixOS-WSL) for lightweight, high-performance Linux on Windows without the overhead of standard virtualization.
 - **Home Manager Integration**: Declaratively manages user profiles, dotfiles, and user packages.
 - **Modern Shell & Terminal**:
-  - **Zsh** with Oh-My-Zsh plugins (`git`, `ssh`, `kubectl`, `azure`, `terraform`, `kubectx`, `helm`, `ansible`).
+  - **Zsh** with Oh-My-Zsh plugins (`git`, `ssh`, `kubectl`, `terraform`, `kubectx`, `helm`, `ansible`).
   - **Starship Prompt**: Custom Catppuccin Mocha powerline theme with JetBrains Mono Nerd Font glyphs. Inside a `nix-shell` / `nix develop` / `nix run`, the loaded packages are shown (via `any-nix-shell`) right before the prompt character, next to a `direnv` indicator reporting whether the directory's `.envrc` is allowed and loaded.
   - **Zellij**: Modern terminal multiplexer pre-configured with Zsh integration.
   - **direnv + nix-direnv**: Per-directory environments loaded on `cd`, with the built shell cached and kept alive as a GC root so re-entering a project is instant.
@@ -21,7 +23,8 @@ This project bootstraps and manages a fully-configured developer environment on 
   - **IntelliJ IDEA**: Declaratively provisioned with custom plugins via `nix-jetbrains-plugins` (File Watcher, Junie, MCP Server, ML LLM, ACP).
   - **GitHub Copilot CLI** & development toolchains.
   - **Nix Tooling**: `nixfmt` code formatter and `nh` helper.
-- **Cloud & DevOps Ready**: Preloaded with `azure-cli`, `kubectl`, `helm`, `fluxcd`, `terraform`, and `ansible`.
+- **Cloud & DevOps Ready**: Preloaded with `kubectl`, `helm`, `fluxcd`, `terraform`, and `ansible`. Azure CLI is available through `home-manager.users.<name>.opinionated.roles.ops.azure.enable`.
+- **Automatic Store Cleanup**: `nh clean` removes generations older than 14 days and the store is optimised, weekly.
 - **Modular User Configuration**: Keeps user identities and corporate root certificates separated in `/etc/nixos-config/`.
 
 ---
@@ -30,11 +33,8 @@ This project bootstraps and manages a fully-configured developer environment on 
 
 | File | Purpose |
 | :--- | :--- |
-| `flake.nix` | Flake entry point defining inputs, NixOS system configuration, WSL settings, and Home Manager modules. |
-| `home_base.nix` | Reusable Home Manager module configuring user packages, shell (Zsh + Starship), direnv, Git, Zellij, LazyVim, and IDE setup. |
-| `system-config.nix` | System-level NixOS state version settings. |
-| `system-customisation.nix` | System customizations: time zone, unfree package whitelisting, Nerd Fonts, Nix experimental features (`flakes`, `nix-command`), and default shell. |
-| `wsl-base-config.nix` | Base WSL configurations (WSL enablement, Windows driver interop, path isolation). |
+| `flake.nix` | Flake entry point: inputs (`nixpkgs`, `opinionated`, `/etc/nixos-config`) and the `nixos` system. |
+| `configuration.nix` | Host settings: state version, enabled opinionated modules, main user and its roles, additional certificates. |
 | `exemple_profile.nix` | Example profile template for defining user identity (`username`, `gitUserName`, `gitUserEmail`). |
 
 ---
@@ -84,6 +84,8 @@ sudo git clone <repo-url> /etc/nixos
 cd /etc/nixos
 ```
 
+The `opinionated` input currently points to a local checkout (`path:/home/pierre/NixOs-opinionated`); adjust its `url` in `flake.nix` to where the modules live on your machine, or to their GitHub URL.
+
 ---
 
 ### Step 3: Bootstrap the System
@@ -130,12 +132,12 @@ sudo nixos-rebuild switch --flake /etc/nixos#nixos
 Or using the installed `nh` helper:
 
 ```bash
-nh os switch /etc/nixos
+nh os switch
 ```
 
 ### Updating Flake Inputs
 
-To update all flake inputs (such as `nixpkgs`, `home-manager`, `nixos-wsl`) to their latest versions:
+To update all flake inputs (`nixpkgs`, `opinionated` and its own inputs such as `home-manager`, `nixos-wsl`) to their latest versions:
 
 ```bash
 cd /etc/nixos
@@ -191,14 +193,14 @@ Consequences:
 
   ```bash
   cd /etc/nixos
-  sudo nix flake update lazyvim
+  sudo nix flake update opinionated/lazyvim
   sudo nixos-rebuild switch --flake .#nixos
   ```
 
-To add a language, enable the matching LazyVim extra, e.g.:
+To add a language, enable the matching LazyVim extra in `configuration.nix`, e.g.:
 
 ```nix
-programs.lazyvim.extras.lang.go = {
+home-manager.users.<name>.programs.lazyvim.extras.lang.go = {
   enable = true;
   installDependencies = true;   # pull the extra's tools from nixpkgs
 };
