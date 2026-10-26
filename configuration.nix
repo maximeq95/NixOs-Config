@@ -26,8 +26,6 @@
     // lib.optionalAttrs (mainUser ? homeDirectory) { inherit (mainUser) homeDirectory; };
   };
 
-  wsl.defaultUser = mainUser.username;
-
   security.pki.certificateFiles = lib.mkIf (builtins.pathExists additionalTrusts) [
     additionalTrusts
   ];
