@@ -57,6 +57,7 @@
         "com.intellij.mcpServer"
         "com.intellij.ml.llm"
         "com.agentport.jetbrains-acp"
+        "com.intellij.air"
       ])
     ];
 
