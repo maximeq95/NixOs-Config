@@ -8,9 +8,6 @@
   system.stateVersion = "26.05";
 
   opinionated = {
-    system.enable = true;
-    wsl.enable = true;
-
     users.${mainUser.username} = {
       roles = [
         "base"

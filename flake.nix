@@ -28,7 +28,7 @@
           additionalTrusts = "${user-provided-config}/additional-trusts.crt";
         };
         modules = [
-          opinionated.nixosModules.default
+          opinionated.nixosModules.wsl
           ./configuration.nix
         ];
       };
