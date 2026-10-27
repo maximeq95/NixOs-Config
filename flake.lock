@@ -167,13 +167,16 @@
       },
       "locked": {
         "lastModified": 1793059439,
-        "narHash": "sha256-kIr92OxkAaSv4UL+jO34QEom2iJ70LIgvifkiqQqYXk=",
-        "path": "/home/pierre/NixOs-opinionated",
-        "type": "path"
+        "narHash": "sha256-5ZgAEr1mtmNh4jqq1jmUpcBfSxOmcc2miSICXKphlZg=",
+        "owner": "pchesneau",
+        "repo": "NixOs-Opinionated",
+        "rev": "818888b06d1134e1571ff6c624bb1e0dafe140af",
+        "type": "github"
       },
       "original": {
-        "path": "/home/pierre/NixOs-opinionated",
-        "type": "path"
+        "owner": "pchesneau",
+        "repo": "NixOs-Opinionated",
+        "type": "github"
       }
     },
     "root": {

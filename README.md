@@ -4,7 +4,7 @@ A reproducible, declarative NixOS configuration for WSL (Windows Subsystem for L
 
 This project bootstraps and manages a fully-configured developer environment on Windows WSL, complete with modern CLI utilities, shell optimizations, cloud/DevOps tooling, and declarative IDE configurations.
 
-All the configuration logic lives in the [`NixOs-opinionated`](https://github.com/pchesneau/NixOs-opinionated) modules (input `opinionated`); this repository only enables them and declares the main user with the `base`, `ops`, `dev` and `llm` roles. See that repository's README for every available option and role.
+All the configuration logic lives in the [`NixOs-Opinionated`](https://github.com/pchesneau/NixOs-Opinionated) modules (input `opinionated`); this repository only enables them and declares the main user with the `base`, `ops`, `dev` and `llm` roles. See that repository's README for every available option and role.
 
 ---
 
@@ -59,7 +59,7 @@ sudo git clone <repo-url> /etc/nixos
 cd /etc/nixos
 ```
 
-The `opinionated` input currently points to a local checkout (`path:/home/pierre/NixOs-opinionated`); adjust its `url` in `flake.nix` to where the modules live on your machine, or to their GitHub URL.
+The `opinionated` input points to [`github:pchesneau/NixOs-Opinionated`](https://github.com/pchesneau/NixOs-Opinionated), pinned by the committed `flake.lock`. To work on the modules from a local checkout, override it for a build: `nh os switch -- --override-input opinionated path:/path/to/NixOs-Opinionated`.
 
 ---
 

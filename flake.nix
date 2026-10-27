@@ -3,7 +3,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     opinionated = {
-      url = "path:/home/pierre/NixOs-opinionated";
+      url = "github:pchesneau/NixOs-Opinionated";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
