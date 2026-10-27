@@ -25,7 +25,7 @@ All the configuration logic lives in the [`NixOs-opinionated`](https://github.co
   - **Nix Tooling**: `nixfmt` code formatter and `nh` helper.
 - **Cloud & DevOps Ready**: Preloaded with `kubectl`, `helm`, `fluxcd`, `terraform`, and `ansible`. Azure CLI is available through `home-manager.users.<name>.opinionated.roles.ops.azure.enable`.
 - **Automatic Store Cleanup**: `nh clean` removes generations older than 14 days and the store is optimised, weekly.
-- **Modular User Configuration**: Keeps user identities and corporate root certificates separated in `/etc/nixos-config/`.
+- **Machine-Specific Configuration**: User identity and corporate root certificates are git-ignored files next to the flake, so `flake.lock` is committed and shared between machines.
 
 ---
 
@@ -33,7 +33,7 @@ All the configuration logic lives in the [`NixOs-opinionated`](https://github.co
 
 | File | Purpose |
 | :--- | :--- |
-| `flake.nix` | Flake entry point: inputs (`nixpkgs`, `opinionated`, `/etc/nixos-config`) and the `nixos` system. |
+| `flake.nix` | Flake entry point: inputs (`nixpkgs`, `opinionated`) and the `nixos` system, built with the git-ignored `mainUser.nix` and `additional-trusts.crt`. |
 | `configuration.nix` | Host settings: state version, enabled opinionated modules, main user and its roles, additional certificates. |
 | `exemple_profile.nix` | Example profile template for defining user identity (`username`, `gitUserName`, `gitUserEmail`). |
 
@@ -49,32 +49,7 @@ All the configuration logic lives in the [`NixOs-opinionated`](https://github.co
 
 ---
 
-### Step 1: Configure User Profile
-
-The flake expects your user profile configuration to be located at `/etc/nixos-config/mainUser.nix`.
-
-1. Create the configuration directory:
-   ```bash
-   sudo mkdir -p /etc/nixos-config
-   ```
-
-2. Create `/etc/nixos-config/mainUser.nix` based on `exemple_profile.nix`:
-   ```nix
-   {
-     username = "<your-username>";
-     gitUserName = "Your Name";
-     gitUserEmail = "your.email@example.com";
-   }
-   ```
-
-3. *(Optional)* If your environment requires custom corporate root certificates, place them at:
-   ```
-   /etc/nixos-config/additional-trusts.crt
-   ```
-
----
-
-### Step 2: Clone / Copy this Configuration
+### Step 1: Clone / Copy this Configuration
 
 Clone or copy this repository to `/etc/nixos/`:
 
@@ -88,13 +63,35 @@ The `opinionated` input currently points to a local checkout (`path:/home/pierre
 
 ---
 
+### Step 2: Configure the Machine-Specific Files
+
+The user identity and the optional certificates live next to `flake.nix`, but are git-ignored: `flake.lock` stays shareable between machines and never records them.
+
+1. Create `/etc/nixos/mainUser.nix` based on `exemple_profile.nix`:
+   ```nix
+   {
+     username = "<your-username>";
+     gitUserName = "Your Name";
+     gitUserEmail = "your.email@example.com";
+   }
+   ```
+
+2. *(Optional)* If your environment requires custom corporate root certificates, place them at:
+   ```
+   /etc/nixos/additional-trusts.crt
+   ```
+
+---
+
 ### Step 3: Bootstrap the System
 
 Build and activate the flake configuration for the first time:
 
 ```bash
-sudo nixos-rebuild boot --extra-experimental-features "nix-command flakes" --flake .#nixos
+sudo nixos-rebuild boot --extra-experimental-features "nix-command flakes" --flake path:/etc/nixos#nixos
 ```
+
+The `path:` prefix is required: a plain `/etc/nixos` reference is read as a git repository, which hides the git-ignored files above.
 
 ---
 
@@ -123,26 +120,27 @@ You should now log in directly into your user account with Zsh, Starship prompt,
 
 ### Rebuilding After Changes
 
-When you make changes to files in `/etc/nixos/` or your user profile:
-
-```bash
-sudo nixos-rebuild switch --flake /etc/nixos#nixos
-```
-
-Or using the installed `nh` helper:
+When you make changes to files in `/etc/nixos/`, including `mainUser.nix`:
 
 ```bash
 nh os switch
 ```
 
+`nh` uses `NH_FLAKE=path:/etc/nixos`, set by the configuration. With `nixos-rebuild`, the `path:` reference must be given explicitly:
+
+```bash
+sudo nixos-rebuild switch --flake path:/etc/nixos#nixos
+```
+
 ### Updating Flake Inputs
 
-To update all flake inputs (`nixpkgs`, `opinionated` and its own inputs such as `home-manager`, `nixos-wsl`) to their latest versions:
+To update all flake inputs (`nixpkgs`, `opinionated` and its own inputs such as `home-manager`, `nixos-wsl`) to their latest versions, then commit the resulting `flake.lock`:
 
 ```bash
 cd /etc/nixos
-sudo nix flake update
-sudo nixos-rebuild switch --flake .#nixos
+nix flake update
+nh os switch
+git commit flake.lock -m "chore: update flake inputs"
 ```
 
 ---
@@ -193,8 +191,8 @@ Consequences:
 
   ```bash
   cd /etc/nixos
-  sudo nix flake update opinionated/lazyvim
-  sudo nixos-rebuild switch --flake .#nixos
+  nix flake update opinionated/lazyvim
+  nh os switch
   ```
 
 To add a language, enable the matching LazyVim extra in `configuration.nix`, e.g.:

@@ -8,6 +8,9 @@
   system.stateVersion = "26.05";
 
   opinionated = {
+    # Makes `nh os switch` read the git-ignored machine-specific files.
+    system.flakePath = "path:/etc/nixos";
+
     users.${mainUser.username} = {
       roles = [
         "base"
@@ -23,7 +26,5 @@
     // lib.optionalAttrs (mainUser ? homeDirectory) { inherit (mainUser) homeDirectory; };
   };
 
-  security.pki.certificateFiles = lib.mkIf (builtins.pathExists additionalTrusts) [
-    additionalTrusts
-  ];
+  security.pki.certificateFiles = lib.mkIf (additionalTrusts != null) [ additionalTrusts ];
 }
