@@ -1,2 +1,5 @@
-.idea/**
-flake.lock
+.idea/
+
+# Machine-specific files, read through the `path:` flake reference.
+mainUser.nix
+additional-trusts.crt

@@ -1,8 +1,7 @@
 # Identity: pierre .
 #
-# Instantiates the shared base profile (home_base.nix) with this user's
-# details. Add a sibling file like this one to reuse the same setup for
-# another account or another git identity.
+# Copied to /etc/nixos/mainUser.nix (git-ignored), it declares the main user
+# (with its roles, see configuration.nix) and its git identity.
 {
   username = "pierre";
   gitUserName = "CHANGEME";

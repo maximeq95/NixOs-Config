@@ -2,83 +2,42 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    home-manager = {
-      url = "github:nix-community/home-manager";
+    opinionated = {
+      url = "github:pchesneau/NixOs-Opinionated";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    nixos-wsl = {
-      url = "github:nix-community/NixOS-WSL/main";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    nix-jetbrains-plugins = {
-      url = "github:nix-community/nix-jetbrains-plugins";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    # Home Manager module exposing `programs.lazyvim`. It patches the upstream
-    # LazyVim starter config so every plugin, treesitter parser and LSP binary
-    # is resolved through Nix instead of being downloaded at runtime.
-    lazyvim = {
-      url = "github:pfassina/lazyvim-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    user-provided-config = {
-      url = "path:///etc/nixos-config";
-      flake = false;
-    };
-
   };
 
   outputs =
+    { nixpkgs, opinionated, ... }:
+    let
+      # Machine-specific and git-ignored: only visible when the flake is
+      # referenced as `path:/etc/nixos`, which makes Nix copy untracked files.
+      mainUserFile = ./. + "/mainUser.nix";
+      additionalTrusts = ./. + "/additional-trusts.crt";
+
+      mainUser =
+        if builtins.pathExists mainUserFile then
+          import mainUserFile
+        else
+          throw ''
+            /etc/nixos/mainUser.nix not found. Create it from exemple_profile.nix,
+            then build with `nh os switch` or
+            `nixos-rebuild switch --flake path:/etc/nixos#nixos`
+            (a plain /etc/nixos reference ignores git-ignored files).
+          '';
+    in
     {
-      self,
-      nixpkgs,
-      nixos-wsl,
-      home-manager,
-      nix-jetbrains-plugins,
-      lazyvim,
-      user-provided-config,
-      ...
-    }@inputs:
-    {
-      nixosConfigurations =
-        let
-          mainUserConfig = import "${inputs.user-provided-config}/mainUser.nix";
-        in
-        {
-          nixos = nixpkgs.lib.nixosSystem {
-            system = "x86_64-linux";
-            modules = [
-              ./system-config.nix
-              nixos-wsl.nixosModules.default
-              {
-                security.pki.certificateFiles =
-                  nixpkgs.lib.mkIf (builtins.pathExists "${inputs.user-provided-config}/additional-trusts.crt")
-                    [ "${inputs.user-provided-config}/additional-trusts.crt" ];
-              }
-              ./wsl-base-config.nix
-              ./system-customisation.nix
-              {
-                wsl.defaultUser = mainUserConfig.username;
-              }
-              ({ lib, pkgs, ... }: {
-                config = {
-                  users.users."${mainUserConfig.username}".shell = pkgs.zsh;
-                };
-              })
-              home-manager.nixosModules.home-manager
-              {
-                home-manager.useGlobalPkgs = true;
-                home-manager.backupFileExtension = ".home-manager-overrided";
-                home-manager.useUserPackages = true;
-                home-manager.extraSpecialArgs = { inherit inputs; };
-                home-manager.users."${mainUserConfig.username}" = import ./home_base.nix mainUserConfig;
-              }
-            ];
-          };
+      nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = {
+          inherit mainUser;
+          additionalTrusts = if builtins.pathExists additionalTrusts then additionalTrusts else null;
         };
+        modules = [
+          opinionated.nixosModules.wsl
+          ./configuration.nix
+        ];
+      };
     };
 }
